@@ -44,13 +44,13 @@ class Tools:
             )
         
         try:
-            # Generate HMAC signature
+            # Generate HMAC signature (server expects: timestamp + "." + body)
             body = json.dumps({"text": task_description})
             timestamp = str(int(time.time()))
-            message = body + timestamp
+            message = timestamp.encode() + b"." + body.encode()
             signature = hmac.new(
                 APEX_SHARED_KEY.encode(),
-                message.encode(),
+                message,
                 hashlib.sha256
             ).hexdigest()
             
