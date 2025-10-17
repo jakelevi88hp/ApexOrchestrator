@@ -1,0 +1,86 @@
+services:
+  apex-orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: apex-orchestrator
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Mount logs directory
+      - ./logs:/app/logs
+      # Mount work directory (for file operations)
+      - apex-work:/app/work
+      # Mount policy configuration (read-only)
+      - ./config/policy.yaml:/app/config/policy.yaml:ro
+    environment:
+      - LOG_DIR=/app/logs
+      - WORK_DIR=/app/work
+    networks:
+      - apex-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Resource limits (adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Optional: Ollama for local LLM (uncomment if needed)
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: apex-ollama
+  #   restart: unless-stopped
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama-data:/root/.ollama
+  #   networks:
+  #     - apex-network
+
+  # Open WebUI - ChatGPT-style interface
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - WEBUI_AUTH=false
+      - ENABLE_RAG_WEB_SEARCH=true
+      - ENABLE_IMAGE_GENERATION=false
+    volumes:
+      - open-webui-data:/app/backend/data
+    networks:
+      - apex-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - apex-orchestrator
+
+volumes:
+  apex-work:
+    driver: local
+  open-webui-data:
+    driver: local
+  # ollama-data:
+  #   driver: local
+
+networks:
+  apex-network:
+    driver: bridge
+

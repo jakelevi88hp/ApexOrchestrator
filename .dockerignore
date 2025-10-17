@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Environment
+.env
+.env.*
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/*.log
+*.log
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation (already in image)
+docs/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Work directory content (should be in volume)
+C:\ApexWork/
+
