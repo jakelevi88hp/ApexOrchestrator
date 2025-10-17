@@ -574,22 +574,8 @@ async def plan_with_ollama(prompt: str) -> Plan:
     payload = {
         "model": "llama3.1",
         "messages": [{"role":"system","content":PLANNER_SYS},{"role":"user","content":prompt}],
-        "format": {"type":"json_schema","schema":{
-            "type":"object",
-            "properties":{
-                "intent":{"type":"string"},
-                "steps":{"type":"array","items":{
-                    "type":"object",
-                    "properties":{
-                        "tool":{"type":"string"},
-                        "args":{"type":"object"},
-                        "description":{"type":"string"}
-                    },
-                    "required":["tool","args"]
-                }}
-            },
-            "required":["intent","steps"]
-        }},
+        "format": "json",  # Ollama expects simple "json" format
+        "stream": False,
         "options":{"temperature":0.2}
     }
     async with httpx.AsyncClient(timeout=60) as c:

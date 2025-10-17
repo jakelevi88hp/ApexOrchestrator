@@ -16,6 +16,7 @@
 paths_allow:
   - "C:\\ApexWork"
   - "C:\\ApexOrchestrator"
+  - "/app/work"  # Docker container work directory
 
 timeouts:
   shell_seconds: 120
