@@ -9,6 +9,9 @@ pyyaml==6.0.2
 # Rate Limiting
 slowapi==0.1.9
 
+# System Monitoring
+psutil==5.9.8
+
 # Development and Testing (install with: pip install -r requirements.txt -r requirements-dev.txt)
 # pytest==8.3.2
 # pytest-asyncio==0.23.8

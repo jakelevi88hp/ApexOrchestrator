@@ -1,0 +1,107 @@
+# Pulse System Configuration
+# Real-time monitoring and analytics configuration
+
+# System Settings
+enabled: true
+collection_interval: 30  # seconds
+retention_days: 7
+max_events_per_minute: 1000
+dashboard_refresh_interval: 5  # seconds
+websocket_enabled: true
+log_level: "INFO"
+
+# Alert Thresholds
+alert_thresholds:
+  cpu_percent: 80.0
+  memory_percent: 85.0
+  disk_usage_percent: 90.0
+  error_rate: 10.0
+  response_time_avg: 5000.0  # milliseconds
+  requests_per_second: 100.0
+
+# Event Filtering
+event_filters:
+  # Minimum severity level to record
+  min_severity: "low"
+  
+  # Event types to track
+  track_event_types:
+    - "api_request"
+    - "api_response"
+    - "agent_execution"
+    - "tool_execution"
+    - "error"
+    - "system_metric"
+    - "performance"
+  
+  # Sources to track
+  track_sources:
+    - "api"
+    - "agent"
+    - "tool"
+    - "system"
+
+# Performance Monitoring
+performance_monitoring:
+  # Track response times
+  track_response_times: true
+  
+  # Track resource usage
+  track_cpu: true
+  track_memory: true
+  track_disk: true
+  
+  # Track network activity
+  track_network: true
+  
+  # Track database activity (if applicable)
+  track_database: false
+
+# Dashboard Settings
+dashboard:
+  # Default time range for historical data (hours)
+  default_time_range: 24
+  
+  # Number of recent events to show
+  recent_events_limit: 100
+  
+  # Chart refresh interval (seconds)
+  chart_refresh_interval: 30
+  
+  # Enable real-time updates
+  real_time_updates: true
+
+# WebSocket Settings
+websocket:
+  # Maximum number of concurrent connections
+  max_connections: 100
+  
+  # Heartbeat interval (seconds)
+  heartbeat_interval: 30
+  
+  # Message queue size
+  queue_size: 1000
+
+# Data Export
+export:
+  # Enable data export
+  enabled: true
+  
+  # Export formats
+  formats:
+    - "json"
+    - "csv"
+  
+  # Export retention (days)
+  retention_days: 30
+
+# Security
+security:
+  # Require authentication for dashboard access
+  require_auth: false
+  
+  # Allowed IP addresses (empty = all)
+  allowed_ips: []
+  
+  # Rate limiting for dashboard endpoints
+  rate_limit_per_minute: 60

@@ -68,6 +68,15 @@ except ImportError as e:
     AGENT_AVAILABLE = False
     logger.warning(f"Agent module not available: {e}")
 
+# Import pulse system
+try:
+    from pulse import pulse_router, initialize_pulse, cleanup_pulse, record_pulse_event, PulseEvent, EventType, EventSeverity
+    PULSE_AVAILABLE = True
+    logger.info("Pulse system loaded successfully")
+except ImportError as e:
+    PULSE_AVAILABLE = False
+    logger.warning(f"Pulse system not available: {e}")
+
 APP = FastAPI(
     title="Apex Orchestrator", 
     version="1.0.0",
@@ -175,14 +184,75 @@ async def log_requests(request: Request, call_next):
     
     logger.info(f"[{request_id}] {request.method} {request.url.path}")
     
+    # Record pulse event for API request
+    if PULSE_AVAILABLE:
+        try:
+            pulse_event = PulseEvent(
+                id=f"req_{request_id}",
+                event_type=EventType.API_REQUEST,
+                source="api",
+                message=f"{request.method} {request.url.path}",
+                data={
+                    "method": request.method,
+                    "endpoint": request.url.path,
+                    "user_agent": request.headers.get("user-agent", ""),
+                    "remote_addr": request.client.host if request.client else "unknown"
+                },
+                request_id=request_id
+            )
+            record_pulse_event(pulse_event)
+        except Exception as e:
+            logger.warning(f"Failed to record pulse event: {e}")
+    
     try:
         response = await call_next(request)
         duration = time.time() - start_time
         logger.info(f"[{request_id}] Status: {response.status_code} Duration: {duration:.3f}s")
+        
+        # Record pulse event for API response
+        if PULSE_AVAILABLE:
+            try:
+                pulse_event = PulseEvent(
+                    id=f"resp_{request_id}",
+                    event_type=EventType.API_RESPONSE,
+                    source="api",
+                    message=f"Response {response.status_code}",
+                    data={
+                        "status_code": response.status_code,
+                        "endpoint": request.url.path
+                    },
+                    duration_ms=duration * 1000,
+                    request_id=request_id
+                )
+                record_pulse_event(pulse_event)
+            except Exception as e:
+                logger.warning(f"Failed to record pulse response event: {e}")
+        
         return response
     except Exception as e:
         duration = time.time() - start_time
         logger.error(f"[{request_id}] Error after {duration:.3f}s: {e}")
+        
+        # Record pulse event for error
+        if PULSE_AVAILABLE:
+            try:
+                pulse_event = PulseEvent(
+                    id=f"err_{request_id}",
+                    event_type=EventType.ERROR,
+                    severity=EventSeverity.HIGH,
+                    source="api",
+                    message=f"Request error: {str(e)}",
+                    data={
+                        "error_type": type(e).__name__,
+                        "endpoint": request.url.path
+                    },
+                    duration_ms=duration * 1000,
+                    request_id=request_id
+                )
+                record_pulse_event(pulse_event)
+            except Exception as pulse_error:
+                logger.warning(f"Failed to record pulse error event: {pulse_error}")
+        
         raise
 
 # --- Configuration Management ---
@@ -287,6 +357,30 @@ async def startup_event():
     else:
         logger.warning("Autonomous Agent not available")
     
+    # Include pulse routes if available
+    if PULSE_AVAILABLE:
+        try:
+            from pulse.models import PulseConfig
+            import yaml
+            
+            # Load pulse configuration
+            pulse_config_path = pathlib.Path(__file__).parent.parent / "config" / "pulse.yaml"
+            if pulse_config_path.exists():
+                with open(pulse_config_path, "r", encoding="utf-8") as f:
+                    pulse_config_data = yaml.safe_load(f)
+                pulse_config = PulseConfig(**pulse_config_data)
+            else:
+                pulse_config = PulseConfig()
+            
+            initialize_pulse(pulse_config)
+            APP.include_router(pulse_router)
+            logger.info("📊 Pulse Dashboard routes registered")
+            logger.info("Pulse endpoints: /pulse/*")
+        except Exception as e:
+            logger.error(f"Failed to register pulse routes: {e}")
+    else:
+        logger.warning("Pulse system not available")
+    
     # Notify startup
     await notify("🚀 Apex Orchestrator started")
 
@@ -305,6 +399,14 @@ async def shutdown_event():
                 logger.info("Autonomous agent stopped")
         except Exception as e:
             logger.error(f"Error stopping agent: {e}")
+    
+    # Stop pulse system if running
+    if PULSE_AVAILABLE:
+        try:
+            await cleanup_pulse()
+            logger.info("Pulse system stopped")
+        except Exception as e:
+            logger.error(f"Error stopping pulse system: {e}")
     
     await notify("🛑 Apex Orchestrator stopped")
 
@@ -396,6 +498,7 @@ def run_shell(cmd: str, cwd: Optional[str] = None) -> Dict[str, Any]:
         raise HTTPException(403, f"Shell command not allowed by policy")
     
     timeout = POLICY.get("timeouts", {}).get("shell_seconds", 120)
+    start_time = time.time()
     
     try:
         proc = subprocess.run(
@@ -407,11 +510,32 @@ def run_shell(cmd: str, cwd: Optional[str] = None) -> Dict[str, Any]:
             timeout=timeout
         )
         
+        duration = time.time() - start_time
         result = {
             "returncode": proc.returncode, 
             "stdout": proc.stdout[:10000],  # Limit output size
             "stderr": proc.stderr[:10000]
         }
+        
+        # Record pulse event for tool execution
+        if PULSE_AVAILABLE:
+            try:
+                pulse_event = PulseEvent(
+                    id=f"shell_{int(time.time()*1000)}",
+                    event_type=EventType.TOOL_EXECUTION,
+                    source="tool",
+                    message=f"Shell command: {cmd[:50]}...",
+                    data={
+                        "tool": "shell",
+                        "command": cmd[:100],
+                        "returncode": proc.returncode,
+                        "success": proc.returncode == 0
+                    },
+                    duration_ms=duration * 1000
+                )
+                record_pulse_event(pulse_event)
+            except Exception as e:
+                logger.warning(f"Failed to record pulse tool event: {e}")
         
         if proc.returncode != 0:
             logger.warning(f"Shell command failed with code {proc.returncode}")
@@ -421,10 +545,54 @@ def run_shell(cmd: str, cwd: Optional[str] = None) -> Dict[str, Any]:
         return result
         
     except subprocess.TimeoutExpired:
+        duration = time.time() - start_time
         logger.error(f"Shell command timed out after {timeout}s")
+        
+        # Record pulse event for timeout
+        if PULSE_AVAILABLE:
+            try:
+                pulse_event = PulseEvent(
+                    id=f"shell_timeout_{int(time.time()*1000)}",
+                    event_type=EventType.ERROR,
+                    severity=EventSeverity.HIGH,
+                    source="tool",
+                    message=f"Shell command timeout: {cmd[:50]}...",
+                    data={
+                        "tool": "shell",
+                        "command": cmd[:100],
+                        "timeout": timeout
+                    },
+                    duration_ms=duration * 1000
+                )
+                record_pulse_event(pulse_event)
+            except Exception as e:
+                logger.warning(f"Failed to record pulse timeout event: {e}")
+        
         raise HTTPException(408, f"Command timed out after {timeout} seconds")
     except Exception as e:
+        duration = time.time() - start_time
         logger.error(f"Shell command error: {e}")
+        
+        # Record pulse event for error
+        if PULSE_AVAILABLE:
+            try:
+                pulse_event = PulseEvent(
+                    id=f"shell_error_{int(time.time()*1000)}",
+                    event_type=EventType.ERROR,
+                    severity=EventSeverity.HIGH,
+                    source="tool",
+                    message=f"Shell command error: {str(e)}",
+                    data={
+                        "tool": "shell",
+                        "command": cmd[:100],
+                        "error_type": type(e).__name__
+                    },
+                    duration_ms=duration * 1000
+                )
+                record_pulse_event(pulse_event)
+            except Exception as pulse_error:
+                logger.warning(f"Failed to record pulse error event: {pulse_error}")
+        
         raise HTTPException(500, f"Shell execution error: {str(e)}")
 
 def run_python(code: str) -> Dict[str, Any]:
@@ -433,6 +601,7 @@ def run_python(code: str) -> Dict[str, Any]:
     
     timeout = POLICY.get("timeouts", {}).get("python_seconds", 120)
     pyfile = None
+    start_time = time.time()
     
     try:
         # Write to temp file in WORK_DIR
@@ -448,12 +617,33 @@ def run_python(code: str) -> Dict[str, Any]:
             cwd=str(WORK_DIR)
         )
         
+        duration = time.time() - start_time
         result = {
             "returncode": proc.returncode, 
             "stdout": proc.stdout[:10000],
             "stderr": proc.stderr[:10000], 
             "file": str(pyfile)
         }
+        
+        # Record pulse event for tool execution
+        if PULSE_AVAILABLE:
+            try:
+                pulse_event = PulseEvent(
+                    id=f"python_{int(time.time()*1000)}",
+                    event_type=EventType.TOOL_EXECUTION,
+                    source="tool",
+                    message=f"Python execution ({len(code)} bytes)",
+                    data={
+                        "tool": "python",
+                        "code_length": len(code),
+                        "returncode": proc.returncode,
+                        "success": proc.returncode == 0
+                    },
+                    duration_ms=duration * 1000
+                )
+                record_pulse_event(pulse_event)
+            except Exception as e:
+                logger.warning(f"Failed to record pulse tool event: {e}")
         
         if proc.returncode != 0:
             logger.warning(f"Python execution failed with code {proc.returncode}")
@@ -463,11 +653,62 @@ def run_python(code: str) -> Dict[str, Any]:
         return result
         
     except subprocess.TimeoutExpired:
+        duration = time.time() - start_time
         logger.error(f"Python execution timed out after {timeout}s")
+        
+        # Record pulse event for timeout
+        if PULSE_AVAILABLE:
+            try:
+                pulse_event = PulseEvent(
+                    id=f"python_timeout_{int(time.time()*1000)}",
+                    event_type=EventType.ERROR,
+                    severity=EventSeverity.HIGH,
+                    source="tool",
+                    message=f"Python execution timeout ({len(code)} bytes)",
+                    data={
+                        "tool": "python",
+                        "code_length": len(code),
+                        "timeout": timeout
+                    },
+                    duration_ms=duration * 1000
+                )
+                record_pulse_event(pulse_event)
+            except Exception as e:
+                logger.warning(f"Failed to record pulse timeout event: {e}")
+        
         raise HTTPException(408, f"Python execution timed out after {timeout} seconds")
     except Exception as e:
+        duration = time.time() - start_time
         logger.error(f"Python execution error: {e}")
+        
+        # Record pulse event for error
+        if PULSE_AVAILABLE:
+            try:
+                pulse_event = PulseEvent(
+                    id=f"python_error_{int(time.time()*1000)}",
+                    event_type=EventType.ERROR,
+                    severity=EventSeverity.HIGH,
+                    source="tool",
+                    message=f"Python execution error: {str(e)}",
+                    data={
+                        "tool": "python",
+                        "code_length": len(code),
+                        "error_type": type(e).__name__
+                    },
+                    duration_ms=duration * 1000
+                )
+                record_pulse_event(pulse_event)
+            except Exception as pulse_error:
+                logger.warning(f"Failed to record pulse error event: {pulse_error}")
+        
         raise HTTPException(500, f"Python execution error: {str(e)}")
+    finally:
+        # Clean up temp file
+        if pyfile and pyfile.exists():
+            try:
+                pyfile.unlink()
+            except Exception:
+                pass
 
 def file_write(rel_path: str, content: str, overwrite: bool=True) -> Dict[str, Any]:
     """Write file with path validation"""

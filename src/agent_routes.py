@@ -5,6 +5,7 @@ Endpoints for managing and interacting with the autonomous agent.
 """
 
 import logging
+import time
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Request, Header, Depends, status
 from pydantic import BaseModel, Field
@@ -13,6 +14,13 @@ from slowapi.util import get_remote_address
 
 from agent.agent_loop import get_agent, AutonomousAgent
 from agent.safety import SafetyController
+
+# Import pulse system if available
+try:
+    from pulse import record_pulse_event, PulseEvent, EventType, EventSeverity
+    PULSE_AVAILABLE = True
+except ImportError:
+    PULSE_AVAILABLE = False
 
 logger = logging.getLogger("apex_orchestrator.agent_routes")
 
@@ -70,6 +78,20 @@ async def enable_agent(request: Request, body: AgentEnableRequest):
     try:
         agent = get_agent()
         agent.safety.enable_agent(body.password)
+        
+        # Record pulse event
+        if PULSE_AVAILABLE:
+            try:
+                pulse_event = PulseEvent(
+                    id=f"agent_enable_{int(time.time()*1000)}",
+                    event_type=EventType.AGENT_EXECUTION,
+                    source="agent",
+                    message="Autonomous agent enabled",
+                    data={"action": "enable", "success": True}
+                )
+                record_pulse_event(pulse_event)
+            except Exception as e:
+                logger.warning(f"Failed to record pulse event: {e}")
         
         return {
             "status": "enabled",
@@ -169,6 +191,25 @@ async def apply_modification(request: Request, approval: ModificationApproval):
         
         if result['status'] == 'applied':
             logger.warning(f"✅ Modification applied: {result['file']}")
+            
+            # Record pulse event for successful modification
+            if PULSE_AVAILABLE:
+                try:
+                    pulse_event = PulseEvent(
+                        id=f"agent_modify_{int(time.time()*1000)}",
+                        event_type=EventType.AGENT_EXECUTION,
+                        source="agent",
+                        message=f"Code modification applied: {result.get('file', 'unknown')}",
+                        data={
+                            "action": "apply_modification",
+                            "proposal_id": approval.proposal_id,
+                            "file": result.get('file'),
+                            "success": True
+                        }
+                    )
+                    record_pulse_event(pulse_event)
+                except Exception as e:
+                    logger.warning(f"Failed to record pulse event: {e}")
         
         return result
     except Exception as e:
@@ -193,6 +234,20 @@ async def start_agent_loop(request: Request, interval_seconds: int = 3600):
         import asyncio
         asyncio.create_task(agent.start(interval_seconds))
         
+        # Record pulse event
+        if PULSE_AVAILABLE:
+            try:
+                pulse_event = PulseEvent(
+                    id=f"agent_start_{int(time.time()*1000)}",
+                    event_type=EventType.AGENT_EXECUTION,
+                    source="agent",
+                    message=f"Agent loop started (interval: {interval_seconds}s)",
+                    data={"action": "start_loop", "interval_seconds": interval_seconds, "success": True}
+                )
+                record_pulse_event(pulse_event)
+            except Exception as e:
+                logger.warning(f"Failed to record pulse event: {e}")
+        
         return {
             "status": "started",
             "message": f"Agent loop started (interval: {interval_seconds}s)",
@@ -210,6 +265,20 @@ async def stop_agent_loop(request: Request):
     try:
         agent = get_agent()
         agent.stop()
+        
+        # Record pulse event
+        if PULSE_AVAILABLE:
+            try:
+                pulse_event = PulseEvent(
+                    id=f"agent_stop_{int(time.time()*1000)}",
+                    event_type=EventType.AGENT_EXECUTION,
+                    source="agent",
+                    message="Agent loop stopped",
+                    data={"action": "stop_loop", "total_cycles": agent.loop_count, "success": True}
+                )
+                record_pulse_event(pulse_event)
+            except Exception as e:
+                logger.warning(f"Failed to record pulse event: {e}")
         
         return {
             "status": "stopped",
