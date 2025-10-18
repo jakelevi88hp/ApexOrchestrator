@@ -19,6 +19,7 @@ from .models import (
     PulseEvent, PulseMetrics, SystemMetrics, APIMetrics, AgentMetrics,
     EventType, EventSeverity, PulseConfig
 )
+from .voice import get_voice_engine, speak_alert, speak_event
 
 logger = logging.getLogger("apex_orchestrator.pulse.collector")
 
@@ -202,6 +203,14 @@ class PulseCollector:
             self.alerts.append(alert)
         
         logger.warning(f"Alert created: {alert['message']}")
+        
+        # Voice notification for alerts
+        if self.config.get('voice_enabled', True) and self.config.get('voice_speak_alerts', True):
+            speak_alert(
+                alert_type="system",
+                message=alert['message'],
+                severity=severity.value
+            )
     
     def record_event(self, event: PulseEvent):
         """Record a new event"""
@@ -246,6 +255,14 @@ class PulseCollector:
         
         elif event.event_type == EventType.ERROR:
             logger.error(f"Pulse recorded error: {event.message}")
+        
+        # Voice notification for events
+        if self.config.get('voice_enabled', True) and self.config.get('voice_speak_events', False):
+            speak_event(
+                event_type=event.event_type.value,
+                message=event.message,
+                severity=event.severity.value
+            )
     
     def get_recent_events(self, limit: int = 100) -> List[PulseEvent]:
         """Get recent events"""

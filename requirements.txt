@@ -11,6 +11,8 @@ slowapi==0.1.9
 
 # System Monitoring
 psutil==5.9.8
+pyttsx3==2.90
+pydub==0.25.1
 
 # Development and Testing (install with: pip install -r requirements.txt -r requirements-dev.txt)
 # pytest==8.3.2

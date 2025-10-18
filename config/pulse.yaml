@@ -82,6 +82,43 @@ websocket:
   # Message queue size
   queue_size: 1000
 
+# Voice Settings
+voice:
+  # Enable voice notifications
+  enabled: true
+  
+  # Default speech rate (words per minute)
+  default_rate: 200
+  
+  # Default volume (0.0 to 1.0)
+  default_volume: 0.8
+  
+  # Maximum voice message queue size
+  max_queue_size: 50
+  
+  # Voice timeout (seconds)
+  voice_timeout: 30
+  
+  # What to speak
+  speak_alerts: true
+  speak_metrics: false
+  speak_events: false
+  
+  # Priority settings
+  priority_settings:
+    low:
+      rate: 150
+      volume: 0.6
+    normal:
+      rate: 200
+      volume: 0.8
+    high:
+      rate: 250
+      volume: 0.9
+    critical:
+      rate: 300
+      volume: 1.0
+
 # Data Export
 export:
   # Enable data export

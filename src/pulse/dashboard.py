@@ -17,6 +17,10 @@ from slowapi.util import get_remote_address
 from .models import PulseEvent, PulseMetrics, PulseDashboard, PulseConfig
 from .collector import PulseCollector
 from .analytics import PulseAnalytics
+from .voice import (
+    initialize_voice_engine, get_voice_engine, speak_alert, speak_metrics,
+    speak_event, cleanup_voice_engine
+)
 
 logger = logging.getLogger("apex_orchestrator.pulse.dashboard")
 
@@ -37,6 +41,18 @@ def initialize_pulse(config: PulseConfig):
     global pulse_collector
     pulse_collector = PulseCollector(config)
     asyncio.create_task(pulse_collector.start())
+    
+    # Initialize voice engine
+    voice_config = {
+        'enabled': config.voice_enabled,
+        'default_rate': config.voice_default_rate,
+        'default_volume': config.voice_default_volume,
+        'max_queue_size': config.voice_max_queue_size,
+        'speak_alerts': config.voice_speak_alerts,
+        'speak_metrics': config.voice_speak_metrics,
+        'speak_events': config.voice_speak_events
+    }
+    initialize_voice_engine(voice_config)
 
 
 async def cleanup_pulse():
@@ -44,6 +60,9 @@ async def cleanup_pulse():
     global pulse_collector
     if pulse_collector:
         await pulse_collector.stop()
+    
+    # Cleanup voice engine
+    cleanup_voice_engine()
 
 
 @router.get("/status")
@@ -244,6 +263,141 @@ async def get_health_report(request: Request):
     return report
 
 
+# Voice endpoints
+@router.get("/voice/status")
+@limiter.limit("10/minute")
+async def get_voice_status(request: Request):
+    """Get voice engine status"""
+    voice_engine = get_voice_engine()
+    if not voice_engine:
+        return {"enabled": False, "available": False}
+    
+    return voice_engine.get_status()
+
+
+@router.post("/voice/speak")
+@limiter.limit("20/minute")
+async def speak_text(request: Request):
+    """Speak text using voice engine"""
+    voice_engine = get_voice_engine()
+    if not voice_engine:
+        raise HTTPException(503, "Voice engine not available")
+    
+    body = await request.json()
+    text = body.get("text", "")
+    priority = body.get("priority", "normal")
+    
+    from .voice import VoicePriority
+    priority_enum = VoicePriority(priority.lower())
+    
+    success = voice_engine.speak(text, priority_enum)
+    return {"success": success, "message": "Text added to voice queue" if success else "Failed to add text to voice queue"}
+
+
+@router.post("/voice/speak-alert")
+@limiter.limit("10/minute")
+async def speak_alert_endpoint(request: Request):
+    """Speak an alert message"""
+    body = await request.json()
+    alert_type = body.get("alert_type", "")
+    message = body.get("message", "")
+    severity = body.get("severity", "normal")
+    
+    success = speak_alert(alert_type, message, severity)
+    return {"success": success, "message": "Alert spoken" if success else "Failed to speak alert"}
+
+
+@router.post("/voice/speak-metrics")
+@limiter.limit("5/minute")
+async def speak_metrics_endpoint(request: Request):
+    """Speak current metrics"""
+    if not pulse_collector:
+        raise HTTPException(503, "Pulse system not initialized")
+    
+    current_metrics = pulse_collector.get_current_metrics()
+    if not current_metrics:
+        raise HTTPException(404, "No metrics available")
+    
+    metrics_dict = {
+        "cpu_percent": current_metrics.system.cpu_percent,
+        "memory_percent": current_metrics.system.memory_percent,
+        "health_score": current_metrics.system.health_score
+    }
+    
+    success = speak_metrics(metrics_dict)
+    return {"success": success, "message": "Metrics spoken" if success else "Failed to speak metrics"}
+
+
+@router.post("/voice/stop")
+@limiter.limit("10/minute")
+async def stop_voice(request: Request):
+    """Stop current speech and clear queue"""
+    voice_engine = get_voice_engine()
+    if not voice_engine:
+        raise HTTPException(503, "Voice engine not available")
+    
+    voice_engine.stop_speaking()
+    voice_engine.clear_queue()
+    return {"success": True, "message": "Voice stopped and queue cleared"}
+
+
+@router.get("/voice/voices")
+@limiter.limit("5/minute")
+async def get_available_voices(request: Request):
+    """Get available voices"""
+    voice_engine = get_voice_engine()
+    if not voice_engine:
+        raise HTTPException(503, "Voice engine not available")
+    
+    voices = voice_engine.get_voices()
+    return {"voices": voices, "count": len(voices)}
+
+
+@router.post("/voice/set-voice")
+@limiter.limit("5/minute")
+async def set_voice(request: Request):
+    """Set the default voice"""
+    voice_engine = get_voice_engine()
+    if not voice_engine:
+        raise HTTPException(503, "Voice engine not available")
+    
+    body = await request.json()
+    voice_id = body.get("voice_id", "")
+    
+    success = voice_engine.set_voice(voice_id)
+    return {"success": success, "message": f"Voice set to {voice_id}" if success else "Failed to set voice"}
+
+
+@router.post("/voice/set-rate")
+@limiter.limit("5/minute")
+async def set_voice_rate(request: Request):
+    """Set the speech rate"""
+    voice_engine = get_voice_engine()
+    if not voice_engine:
+        raise HTTPException(503, "Voice engine not available")
+    
+    body = await request.json()
+    rate = body.get("rate", 200)
+    
+    success = voice_engine.set_rate(rate)
+    return {"success": success, "message": f"Rate set to {rate}" if success else "Failed to set rate"}
+
+
+@router.post("/voice/set-volume")
+@limiter.limit("5/minute")
+async def set_voice_volume(request: Request):
+    """Set the speech volume"""
+    voice_engine = get_voice_engine()
+    if not voice_engine:
+        raise HTTPException(503, "Voice engine not available")
+    
+    body = await request.json()
+    volume = body.get("volume", 0.8)
+    
+    success = voice_engine.set_volume(volume)
+    return {"success": success, "message": f"Volume set to {volume}" if success else "Failed to set volume"}
+
+
 @router.get("/dashboard.html")
 async def get_dashboard_html(request: Request):
     """Get HTML dashboard"""
@@ -269,6 +423,11 @@ async def get_dashboard_html(request: Request):
             .status-critical { color: #e74c3c; }
             .refresh-btn { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
             .refresh-btn:hover { background: #2980b9; }
+            .voice-btn { background: #9b59b6; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; margin-left: 10px; }
+            .voice-btn:hover { background: #8e44ad; }
+            .voice-btn.active { background: #e74c3c; }
+            #voiceSelect, #volumeSlider { margin-left: 10px; padding: 5px; }
+            #volumeLabel { margin-left: 5px; color: #7f8c8d; }
         </style>
     </head>
     <body>
@@ -277,6 +436,14 @@ async def get_dashboard_html(request: Request):
                 <h1>🚀 Apex Orchestrator Pulse Dashboard</h1>
                 <p>Real-time system monitoring and analytics</p>
                 <button class="refresh-btn" onclick="refreshDashboard()">Refresh</button>
+                <button class="voice-btn" onclick="toggleVoice()" id="voiceToggle">🔊 Voice On</button>
+                <button class="voice-btn" onclick="speakMetrics()">📊 Speak Metrics</button>
+                <button class="voice-btn" onclick="stopVoice()">⏹️ Stop Voice</button>
+                <select id="voiceSelect" onchange="setVoice(this.value)">
+                    <option value="">Select Voice</option>
+                </select>
+                <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.8" onchange="setVolume(this.value)">
+                <span id="volumeLabel">Volume: 80%</span>
             </div>
             
             <div class="metrics-grid" id="metricsGrid">
@@ -308,6 +475,77 @@ async def get_dashboard_html(request: Request):
                     updateEvents(data);
                 } catch (error) {
                     console.error('Error refreshing dashboard:', error);
+                }
+            }
+            
+            // Voice control functions
+            let voiceEnabled = true;
+            
+            async function toggleVoice() {
+                voiceEnabled = !voiceEnabled;
+                const button = document.getElementById('voiceToggle');
+                button.textContent = voiceEnabled ? '🔊 Voice On' : '🔇 Voice Off';
+                button.classList.toggle('active', !voiceEnabled);
+            }
+            
+            async function speakMetrics() {
+                if (!voiceEnabled) return;
+                try {
+                    await fetch('/pulse/voice/speak-metrics', { method: 'POST' });
+                } catch (error) {
+                    console.error('Error speaking metrics:', error);
+                }
+            }
+            
+            async function stopVoice() {
+                try {
+                    await fetch('/pulse/voice/stop', { method: 'POST' });
+                } catch (error) {
+                    console.error('Error stopping voice:', error);
+                }
+            }
+            
+            async function setVoice(voiceId) {
+                if (!voiceId) return;
+                try {
+                    await fetch('/pulse/voice/set-voice', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ voice_id: voiceId })
+                    });
+                } catch (error) {
+                    console.error('Error setting voice:', error);
+                }
+            }
+            
+            async function setVolume(volume) {
+                const volumePercent = Math.round(volume * 100);
+                document.getElementById('volumeLabel').textContent = `Volume: ${volumePercent}%`;
+                try {
+                    await fetch('/pulse/voice/set-volume', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ volume: parseFloat(volume) })
+                    });
+                } catch (error) {
+                    console.error('Error setting volume:', error);
+                }
+            }
+            
+            async function loadVoices() {
+                try {
+                    const response = await fetch('/pulse/voice/voices');
+                    const data = await response.json();
+                    const select = document.getElementById('voiceSelect');
+                    select.innerHTML = '<option value="">Select Voice</option>';
+                    Object.entries(data.voices).forEach(([id, voice]) => {
+                        const option = document.createElement('option');
+                        option.value = id;
+                        option.textContent = `${voice.name} (${voice.gender})`;
+                        select.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Error loading voices:', error);
                 }
             }
             
@@ -418,6 +656,7 @@ async def get_dashboard_html(request: Request):
             
             // Initial load and auto-refresh
             refreshDashboard();
+            loadVoices();
             setInterval(refreshDashboard, 30000); // Refresh every 30 seconds
         </script>
     </body>

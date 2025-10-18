@@ -122,6 +122,15 @@ class PulseConfig(BaseModel):
     dashboard_refresh_interval: int = Field(5, description="Dashboard refresh interval in seconds")
     websocket_enabled: bool = Field(True, description="Enable WebSocket updates")
     log_level: str = Field("INFO", description="Logging level")
+    
+    # Voice settings
+    voice_enabled: bool = Field(True, description="Enable voice notifications")
+    voice_default_rate: int = Field(200, description="Default speech rate")
+    voice_default_volume: float = Field(0.8, description="Default speech volume (0.0-1.0)")
+    voice_max_queue_size: int = Field(50, description="Maximum voice message queue size")
+    voice_speak_alerts: bool = Field(True, description="Speak alert notifications")
+    voice_speak_metrics: bool = Field(False, description="Speak metrics updates")
+    voice_speak_events: bool = Field(False, description="Speak event notifications")
 
 
 class PulseAlert(BaseModel):

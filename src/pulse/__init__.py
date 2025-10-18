@@ -9,6 +9,10 @@ from .models import PulseEvent, PulseMetrics, PulseDashboard, PulseConfig, Event
 from .collector import PulseCollector
 from .analytics import PulseAnalytics
 from .dashboard import router as pulse_router, initialize_pulse, cleanup_pulse, record_pulse_event
+from .voice import (
+    initialize_voice_engine, get_voice_engine, speak_alert, speak_metrics,
+    speak_event, cleanup_voice_engine
+)
 
 __all__ = [
     "PulseEvent",
@@ -22,5 +26,11 @@ __all__ = [
     "pulse_router",
     "initialize_pulse",
     "cleanup_pulse",
-    "record_pulse_event"
+    "record_pulse_event",
+    "initialize_voice_engine",
+    "get_voice_engine",
+    "speak_alert",
+    "speak_metrics",
+    "speak_event",
+    "cleanup_voice_engine"
 ]
