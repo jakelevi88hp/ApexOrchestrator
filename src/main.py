@@ -196,7 +196,7 @@ async def log_requests(request: Request, call_next):
                     "method": request.method,
                     "endpoint": request.url.path,
                     "user_agent": request.headers.get("user-agent", ""),
-                    "remote_addr": request.client.host if request.client else "unknown"
+                    "remote_addr": getattr(request.client, 'host', 'unknown') if request.client else "unknown"
                 },
                 request_id=request_id
             )
