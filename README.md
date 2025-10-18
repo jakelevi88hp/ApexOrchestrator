@@ -1,10 +1,19 @@
-# Apex Orchestrator
+# Apex Orchestrator - Evolved to AGI
 
-An AI-powered task automation system that converts natural language requests into executable plans using LLMs (Ollama or OpenAI).
+An advanced AI system that has evolved from a task automation system into a comprehensive Artificial General Intelligence (AGI) model with consciousness simulation, emotional intelligence, and advanced reasoning capabilities.
 
 ## Features
 
-- **🤖 Autonomous Agent** (NEW!): Self-learning, self-improving AI agent that can modify its own code
+- **🧠 AGI System** (NEW!): Complete Artificial General Intelligence with consciousness simulation
+  - Multi-modal perception (text, images, audio, video)
+  - Advanced reasoning (logical, causal, analogical, abductive)
+  - Emotional intelligence and empathy
+  - Creative problem solving and idea generation
+  - Accelerated learning and meta-learning
+  - Hierarchical planning and goal management
+  - See `AGI_SYSTEM_README.md` for complete details
+
+- **🤖 Autonomous Agent**: Self-learning, self-improving AI agent that can modify its own code
   - Learns from execution history
   - Identifies optimization opportunities
   - Generates code improvements
@@ -253,9 +262,37 @@ curl -X POST http://localhost:8000/auth/echo-sign -d '{"test":"data"}'
 
 For more troubleshooting, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#troubleshooting).
 
+## 🧠 AGI System
+
+The Apex Orchestrator has evolved into a comprehensive Artificial General Intelligence system with consciousness simulation, emotional intelligence, and advanced reasoning capabilities!
+
+**Quick Start:**
+1. Read `AGI_SYSTEM_README.md` for complete overview
+2. Start the system: `docker-compose up -d`
+3. Check AGI status: `curl http://localhost:8000/agi/status`
+4. Process input: `curl -X POST "http://localhost:8000/agi/process" -d '{"input":"Hello","type":"text"}'`
+
+**AGI Capabilities:**
+- ✅ Multi-modal perception and understanding
+- ✅ Advanced reasoning and problem solving
+- ✅ Emotional intelligence and empathy
+- ✅ Creative idea generation and enhancement
+- ✅ Accelerated learning and meta-learning
+- ✅ Hierarchical planning and goal management
+- ✅ Consciousness simulation and self-awareness
+- ✅ Memory consolidation and knowledge management
+
+**Safety First:**
+- AGI system is **ENABLED by default** (with safety controls)
+- Multiple layers of safety and human oversight
+- Emergency kill switch available
+- Comprehensive monitoring and logging
+
+Visit http://localhost:8000/docs and explore the `/agi/*` endpoints!
+
 ## 🤖 Autonomous Agent
 
-The Apex Orchestrator now includes an autonomous agent that can learn, optimize, and modify its own code!
+The system also includes the original autonomous agent that can learn, optimize, and modify its own code!
 
 **Quick Start:**
 1. Read `AUTONOMOUS_AGENT_SUMMARY.md` for overview

@@ -68,6 +68,15 @@ except ImportError as e:
     AGENT_AVAILABLE = False
     logger.warning(f"Agent module not available: {e}")
 
+# Import AGI system (after logger is set up)
+try:
+    from agi.core import AGICore
+    AGI_AVAILABLE = True
+    logger.info("AGI system loaded successfully")
+except ImportError as e:
+    AGI_AVAILABLE = False
+    logger.warning(f"AGI system not available: {e}")
+
 APP = FastAPI(
     title="Apex Orchestrator", 
     version="1.0.0",
@@ -266,6 +275,16 @@ except Exception as e:
     logger.critical(f"Failed to load configuration: {e}")
     sys.exit(1)
 
+# Initialize AGI system
+agi_core = None
+if AGI_AVAILABLE:
+    try:
+        agi_core = AGICore()
+        logger.info("AGI core system initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize AGI core: {e}")
+        AGI_AVAILABLE = False
+
 # --- Startup/Shutdown Events ---
 @APP.on_event("startup")
 async def startup_event():
@@ -287,6 +306,17 @@ async def startup_event():
     else:
         logger.warning("Autonomous Agent not available")
     
+    # Initialize AGI system if available
+    if AGI_AVAILABLE and agi_core:
+        try:
+            await agi_core.initialize()
+            logger.info("🧠 AGI system initialized and ready")
+        except Exception as e:
+            logger.error(f"Failed to initialize AGI system: {e}")
+            AGI_AVAILABLE = False
+    else:
+        logger.warning("AGI system not available")
+    
     # Notify startup
     await notify("🚀 Apex Orchestrator started")
 
@@ -305,6 +335,14 @@ async def shutdown_event():
                 logger.info("Autonomous agent stopped")
         except Exception as e:
             logger.error(f"Error stopping agent: {e}")
+    
+    # Shutdown AGI system if running
+    if AGI_AVAILABLE and agi_core:
+        try:
+            await agi_core.shutdown()
+            logger.info("AGI system shutdown complete")
+        except Exception as e:
+            logger.error(f"Error shutting down AGI system: {e}")
     
     await notify("🛑 Apex Orchestrator stopped")
 
@@ -759,3 +797,67 @@ async def echo_sign(request: Request):
     body = await request.body()
     ts = str(int(time.time()))
     return {"ts": ts, "sig": sign(body, ts)}
+
+# --- AGI Endpoints ---
+@APP.post("/agi/process")
+@limiter.limit("5/minute")
+async def agi_process(request: Request, x_ts: Optional[str]=Header(None), x_sig: Optional[str]=Header(None)):
+    """Process input through AGI system"""
+    if not AGI_AVAILABLE or not agi_core:
+        raise HTTPException(503, "AGI system not available")
+    
+    body = await request.body()
+    verify(x_sig, x_ts, body)
+    
+    try:
+        payload = json.loads(body)
+        input_data = payload.get("input", "")
+        input_type = payload.get("type", "text")
+        
+        # Process through AGI
+        result = await agi_core.process_input(input_data, input_type)
+        
+        return {"ok": True, "result": result}
+    except Exception as e:
+        logger.error(f"AGI processing error: {e}")
+        raise HTTPException(500, f"AGI processing failed: {str(e)}")
+
+@APP.get("/agi/status")
+@limiter.limit("10/minute")
+async def agi_status(request: Request):
+    """Get AGI system status"""
+    if not AGI_AVAILABLE or not agi_core:
+        raise HTTPException(503, "AGI system not available")
+    
+    try:
+        status = await agi_core.get_status()
+        return {"ok": True, "status": status}
+    except Exception as e:
+        logger.error(f"AGI status error: {e}")
+        raise HTTPException(500, f"AGI status failed: {str(e)}")
+
+@APP.post("/agi/goal")
+@limiter.limit("10/minute")
+async def agi_set_goal(request: Request, x_ts: Optional[str]=Header(None), x_sig: Optional[str]=Header(None)):
+    """Set a new goal for AGI system"""
+    if not AGI_AVAILABLE or not agi_core:
+        raise HTTPException(503, "AGI system not available")
+    
+    body = await request.body()
+    verify(x_sig, x_ts, body)
+    
+    try:
+        payload = json.loads(body)
+        goal = payload.get("goal", "")
+        priority = payload.get("priority", 5)
+        deadline = payload.get("deadline")
+        
+        if deadline:
+            deadline = datetime.fromisoformat(deadline)
+        
+        await agi_core.set_goal(goal, priority, deadline)
+        
+        return {"ok": True, "message": f"Goal set: {goal}"}
+    except Exception as e:
+        logger.error(f"AGI goal setting error: {e}")
+        raise HTTPException(500, f"AGI goal setting failed: {str(e)}")
