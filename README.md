@@ -188,6 +188,7 @@ pytest tests/ --cov=src --cov-report=html
 pytest tests/test_main.py -v
 pytest tests/test_integration.py -v
 pytest tests/test_security.py -v
+pytest tests/test_agi.py -v
 ```
 
 ## Production Deployment
