@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: apex-orchestrator
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/start.py
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: ORCH_MODEL_PROVIDER
+        value: openai
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: LOG_DIR
+        value: logs
+      - key: WORK_DIR
+        value: /opt/render/project/src/ApexWork
+      - key: PYTHON_VERSION
+        value: 3.11.0
+

@@ -283,12 +283,14 @@ if AGI_AVAILABLE:
         logger.info("AGI core system initialized")
     except Exception as e:
         logger.error(f"Failed to initialize AGI core: {e}")
+        agi_core = None
         AGI_AVAILABLE = False
 
 # --- Startup/Shutdown Events ---
 @APP.on_event("startup")
 async def startup_event():
     """Application startup tasks"""
+    global AGI_AVAILABLE
     logger.info("=" * 50)
     logger.info("Apex Orchestrator Starting")
     logger.info("=" * 50)
