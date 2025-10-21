@@ -5,8 +5,9 @@ from logging.handlers import RotatingFileHandler
 from fastapi import FastAPI, HTTPException, Request, Header, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, validator
 from dotenv import load_dotenv
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -84,6 +85,12 @@ APP = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# Mount static files for Admin UI
+static_path = pathlib.Path(__file__).parent.parent / "static"
+if static_path.exists():
+    APP.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+    logger.info(f"Static files mounted from {static_path}")
 
 # Add rate limiter to app
 APP.state.limiter = limiter
@@ -679,6 +686,14 @@ async def run_step(step: ToolCall, run_id: str) -> Dict[str, Any]:
     return res
 
 # --- API Endpoints ---
+@APP.get("/")
+async def root():
+    """Serve the Admin UI dashboard"""
+    static_path = pathlib.Path(__file__).parent.parent / "static" / "index.html"
+    if static_path.exists():
+        return FileResponse(static_path)
+    return {"message": "Apex Orchestrator API", "docs": "/docs"}
+
 @APP.get("/health")
 @limiter.limit("30/minute")
 async def health(request: Request):
