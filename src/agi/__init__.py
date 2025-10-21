@@ -6,16 +6,16 @@ into a more general intelligence system with advanced reasoning, learning,
 and consciousness simulation capabilities.
 """
 
-from .core import AGICore
-from .memory import EnhancedMemorySystem
-from .reasoning import ReasoningEngine
 from .consciousness import ConsciousnessSimulator
-from .world_model import WorldModel
+from .core import AGICore
 from .creativity import CreativityEngine
 from .emotion import EmotionalIntelligence
-from .planning import HierarchicalPlanner
 from .learning import AcceleratedLearner
+from .memory import EnhancedMemorySystem
 from .perception import MultiModalProcessor
+from .planning import HierarchicalPlanner
+from .reasoning import ReasoningEngine
+from .world_model import WorldModel
 
 __all__ = [
     'AGICore',

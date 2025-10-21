@@ -29,17 +29,17 @@ except ImportError:
 
 
 @pytest.fixture
-async def agi_core():
+def agi_core():
     """Fixture to create and initialize AGI core system."""
     if not AGI_AVAILABLE:
         pytest.skip("AGI module not available")
     
-    core = AGICore()
-    await core.initialize()
-    yield core
-    # Cleanup
-    if hasattr(core, 'shutdown'):
-        await core.shutdown()
+    async def _create_core():
+        core = AGICore()
+        await core.initialize()
+        return core
+    
+    return _create_core
 
 
 @pytest.fixture
@@ -67,18 +67,20 @@ class TestAGICore:
     @pytest.mark.asyncio
     async def test_agi_initialization(self, agi_core):
         """Test that AGI core initializes properly."""
-        assert agi_core is not None
-        assert agi_core.initialized is True
-        assert hasattr(agi_core, 'memory')
-        assert hasattr(agi_core, 'reasoning')
-        assert hasattr(agi_core, 'consciousness')
-        assert hasattr(agi_core, 'emotion')
-        assert hasattr(agi_core, 'creativity')
+        core = await agi_core()
+        assert core is not None
+        assert core.initialized is True
+        assert hasattr(core, 'memory')
+        assert hasattr(core, 'reasoning')
+        assert hasattr(core, 'consciousness')
+        assert hasattr(core, 'emotion')
+        assert hasattr(core, 'creativity')
     
     @pytest.mark.asyncio
     async def test_text_input_processing(self, agi_core):
         """Test processing of text input."""
-        result = await agi_core.process_input(
+        core = await agi_core()
+        result = await core.process_input(
             "Hello, how are you?",
             input_type="text"
         )
