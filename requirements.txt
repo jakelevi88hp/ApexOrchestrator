@@ -6,11 +6,28 @@ python-dotenv==1.0.1
 httpx==0.27.0
 pyyaml==6.0.2
 
+<<<<<<< Updated upstream
 # AI/ML Dependencies
 numpy==1.26.4
+=======
+# Data Processing
+numpy>=1.24.0
+
+# Email Validation (for Content Lead Agent)
+email-validator>=2.0.0
+>>>>>>> Stashed changes
 
 # Rate Limiting
 slowapi==0.1.9
+
+# System Monitoring
+psutil==5.9.8
+
+# Voice Interface (Text-to-Speech and Speech-to-Text)
+pyttsx3>=2.90
+SpeechRecognition>=3.10.0
+PyAudio>=0.2.13
+gTTS>=2.4.0
 
 # Development and Testing (install with: pip install -r requirements.txt -r requirements-dev.txt)
 # pytest==8.3.2
