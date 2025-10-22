@@ -7,7 +7,7 @@ __pycache__/
 venv/
 env/
 ENV/
-.venv
+.venv/
 
 # Environment
 .env
@@ -24,7 +24,7 @@ ENV/
 *.swo
 
 # Logs
-logs/*.log
+logs/
 *.log
 
 # Testing
@@ -50,5 +50,6 @@ temp/
 *.tmp
 
 # Work directory content (should be in volume)
-C:\ApexWork/
+ApexWork/
+
 
