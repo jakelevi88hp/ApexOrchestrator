@@ -572,7 +572,7 @@ class CreativityEngine:
                 alternatives.append({
                     "description": idea["content"],
                     "technique": technique_name,
-                    "confidence": idea["evaluation"]["overall_score"]
+                    "confidence": idea.get("evaluation", {}).get("overall_score", 0.5)
                 })
         
         return alternatives
