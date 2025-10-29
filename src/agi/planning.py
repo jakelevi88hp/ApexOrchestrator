@@ -142,7 +142,6 @@ class HierarchicalPlanner:
             "id": f"plan_{int(plan_start.timestamp())}",
             "intent": requirements.get("intent", "Execute plan"),
             "hierarchy": detailed_plan,
-            "steps": detailed_plan.get("steps", []),  # Flatten steps for easy access
             "constraints": self.planning_constraints,
             "resources": resource_plan,
             "risks": risk_assessment,
