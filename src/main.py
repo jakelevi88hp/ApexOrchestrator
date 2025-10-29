@@ -289,6 +289,7 @@ if AGI_AVAILABLE:
 @APP.on_event("startup")
 async def startup_event():
     """Application startup tasks"""
+    global AGI_AVAILABLE
     logger.info("=" * 50)
     logger.info("Apex Orchestrator Starting")
     logger.info("=" * 50)
