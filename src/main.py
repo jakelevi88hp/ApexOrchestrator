@@ -214,7 +214,7 @@ class Config:
         
         # Directory Configuration
         self.LOG_DIR = pathlib.Path(os.getenv("LOG_DIR", "logs"))
-        self.WORK_DIR = pathlib.Path(os.getenv("WORK_DIR", "C:\\ApexWork"))
+        self.WORK_DIR = pathlib.Path(os.getenv("WORK_DIR", "/tmp/apex-work"))
         
         # Environment
         self.ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
