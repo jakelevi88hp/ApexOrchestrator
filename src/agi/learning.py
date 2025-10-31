@@ -44,11 +44,10 @@ class AcceleratedLearner:
         
         # Learning techniques
         self.techniques = {
-            "transfer_learning": self._transfer_learning,
-            "few_shot_learning": self._few_shot_learning,
-            "meta_learning": self._meta_learning,
-            "active_learning": self._active_learning,
-            "reinforcement_learning": self._reinforcement_learning
+            "transfer_learning": self._apply_transfer_learning,
+            "few_shot_learning": self._apply_few_shot_learning,
+            "meta_learning": self._apply_meta_learning,
+            "active_learning": self._apply_active_learning
         }
         
         logger.info("Accelerated learner initialized")

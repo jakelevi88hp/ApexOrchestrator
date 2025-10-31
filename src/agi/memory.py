@@ -19,6 +19,17 @@ import pickle
 logger = logging.getLogger("apex_orchestrator.agi.memory")
 
 
+def _serialize_for_json(obj):
+    """Helper to serialize datetime objects for JSON."""
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, dict):
+        return {k: _serialize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [_serialize_for_json(item) for item in obj]
+    return obj
+
+
 class EnhancedMemorySystem:
     """
     Advanced memory system with multiple memory types for AGI.
@@ -182,7 +193,7 @@ class EnhancedMemorySystem:
             datetime.utcnow().isoformat(),
             event_type,
             description,
-            json.dumps(context) if context else None,
+            json.dumps(_serialize_for_json(context)) if context else None,
             emotional_valence,
             emotional_arousal,
             importance_score,

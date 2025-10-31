@@ -35,13 +35,7 @@ class MultiModalProcessor:
         self.perception_cache = {}
         
         # Supported modalities
-        self.modalities = {
-            "text": self._process_text,
-            "image": self._process_image,
-            "audio": self._process_audio,
-            "video": self._process_video,
-            "multimodal": self._process_multimodal
-        }
+        self.modalities = ["text", "image", "audio", "video", "multimodal"]
         
         # Perception features
         self.feature_extractors = {

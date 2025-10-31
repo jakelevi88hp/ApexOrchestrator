@@ -132,10 +132,10 @@ class HierarchicalPlanner:
         resource_plan = await self._allocate_resources(constrained_plan)
         
         # Assess risks
-        risk_assessment = await self._assess_risks(resource_plan)
+        risk_assessment = await self._assess_risks(constrained_plan)
         
         # Generate execution schedule
-        schedule = await self._generate_schedule(resource_plan)
+        schedule = await self._generate_schedule(constrained_plan)
         
         # Create final plan
         final_plan = {
